@@ -1,37 +1,45 @@
 @{
-    ViewData["Title"] = "Registro de Ingreso a Taller";
-    ViewData["HeaderEyebrow"] = "Gestión vehicular";
-    ViewData["HeaderSubtitle"] = "Registra la entrada de una unidad al taller mecánico y gestiona su reporte de servicio.";
+    ViewData["Title"] = "Mantenimiento de vehículos";
+    ViewData["HeaderEyebrow"] = "Operación vehicular";
+    ViewData["HeaderSubtitle"] = "Registra el ingreso de una unidad y consulta rápidamente su estado.";
 }
 
 @section Head {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/vista-vehiculos.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/vista-mantenimientos.css" asp-append-version="true" />
 }
 
+<div class="ingreso-taller-page">
 <partial name="_PageHeader" />
 
 <!-- ─── Tarjeta 1: Datos del Ingreso a Taller ───────────────────────────── -->
-<form id="formIngresoTaller" class="vehiculo-create-form vehiculo-module-form" novalidate>
+<form id="formIngresoTaller" class="vehiculo-create-form vehiculo-module-form mantenimiento-form" novalidate>
 
-    <section class="cavex-card form-section-card vehiculo-section-card mant-card" id="card1">
-        <h3 class="form-section-title">
-            <span class="form-section-number">1</span>
-            Datos del Ingreso a Taller
-        </h3>
+    <section class="cavex-card form-section-card vehiculo-section-card mant-card" id="card1" aria-labelledby="tituloRegistroMantenimiento">
+        <div class="mant-section-heading">
+            <span class="mant-section-icon" aria-hidden="true"><i class="bi bi-tools"></i></span>
+            <div>
+                <span class="mant-section-eyebrow">Nuevo registro</span>
+                <h2 class="form-section-title" id="tituloRegistroMantenimiento">Registrar ingreso a mantenimiento</h2>
+                <p>Captura los datos de la unidad, la persona responsable y el destino del servicio.</p>
+            </div>
+            <span class="mant-status-badge"><span></span> En mantenimiento</span>
+        </div>
 
         <div class="row g-3">
             <!-- Vehículo -->
             <div class="col-md-6 col-xl-4">
-                <label class="form-label" for="mant-idVehDatosGenerales">Vehículo (Matrícula / Modelo)</label>
+                <label class="form-label" for="mant-idVehDatosGenerales">Vehículo <span class="mant-required" aria-hidden="true">*</span></label>
                 <select id="mant-idVehDatosGenerales" name="idVehDatosGenerales" class="form-select" required>
-                    <option value="">Seleccionar...</option>
+                    <option value="">Seleccione un vehículo</option>
                 </select>
-                <div class="invalid-feedback">Selecciona un vehículo.</div>
+                <div class="invalid-feedback">Selecciona un vehículo válido.</div>
             </div>
 
             <!-- Empleado Responsable -->
             <div class="col-md-6 col-xl-4">
-                <label class="form-label" for="mant-idEmpEmpleadoChofer">Empleado responsable</label>
+                <label class="form-label" for="mant-idEmpEmpleadoChofer">Empleado responsable <span class="mant-required" aria-hidden="true">*</span></label>
                 <select id="mant-idEmpEmpleadoChofer" name="idEmpEmpleadoChofer" class="form-select" required>
                     <option value="">Seleccionar...</option>
                 </select>
@@ -40,7 +48,7 @@
 
             <!-- Encargado Autorizador -->
             <div class="col-md-6 col-xl-4">
-                <label class="form-label" for="mant-idVehCatResponsableServicio">Encargado Autorizador</label>
+                <label class="form-label" for="mant-idVehCatResponsableServicio">Encargado autorizador <span class="mant-required" aria-hidden="true">*</span></label>
                 <select id="mant-idVehCatResponsableServicio" name="idVehCatResponsableServicio" class="form-select" required>
                     <option value="">Seleccionar...</option>
                 </select>
@@ -49,14 +57,14 @@
 
             <!-- Fecha de Generación -->
             <div class="col-md-6 col-xl-3">
-                <label class="form-label" for="mant-dteFechaServicio">Fecha de Generación</label>
+                <label class="form-label" for="mant-dteFechaServicio">Fecha de ingreso <span class="mant-required" aria-hidden="true">*</span></label>
                 <input type="date" id="mant-dteFechaServicio" name="dteFechaServicio" class="form-control" required />
                 <div class="invalid-feedback">Selecciona una fecha válida.</div>
             </div>
 
             <!-- Tipo de Servicio / Motivo -->
             <div class="col-md-6 col-xl-5">
-                <label class="form-label" for="mant-idVehCatTipoServicio">Tipo de Servicio / Motivo</label>
+                <label class="form-label" for="mant-idVehCatTipoServicio">Tipo de servicio / motivo <span class="mant-required" aria-hidden="true">*</span></label>
                 <select id="mant-idVehCatTipoServicio" name="idVehCatTipoServicio" class="form-select" required>
                     <option value="">Seleccionar...</option>
                 </select>
@@ -65,7 +73,7 @@
 
             <!-- Taller de Destino -->
             <div class="col-md-6 col-xl-4">
-                <label class="form-label" for="mant-idVehCatTaller">Taller de Destino</label>
+                <label class="form-label" for="mant-idVehCatTaller">Taller de destino <span class="mant-required" aria-hidden="true">*</span></label>
                 <select id="mant-idVehCatTaller" name="idVehCatTaller" class="form-select" required>
                     <option value="">Seleccionar...</option>
                 </select>
@@ -74,18 +82,21 @@
 
             <!-- Kilometraje Actual -->
             <div class="col-md-6 col-xl-3">
-                <label class="form-label" for="mant-decKilometrajeActual">Kilometraje Actual</label>
+                <label class="form-label" for="mant-decKilometrajeActual">Kilometraje actual <span class="mant-required" aria-hidden="true">*</span></label>
                 <div class="input-group">
                     <input type="text" id="mant-decKilometrajeActual" name="decKilometrajeActual" maxlength="15" class="form-control" placeholder="0" required />
                     <span class="input-group-text">km</span>
                 </div>
-                <div class="invalid-feedback">Captura el kilometraje actual.</div>
+                <div class="invalid-feedback">Captura un kilometraje válido.</div>
             </div>
 
             <!-- Descripción / Observaciones generales (opcional) -->
             <div class="col-12">
-                <label class="form-label" for="mant-strDescripcion">Observaciones (Opcional)</label>
-                <textarea id="mant-strDescripcion" name="strDescripcion" class="form-control" rows="2" maxlength="500" placeholder="Describe brevemente el problema o motivo de ingreso..."></textarea>
+                <div class="d-flex justify-content-between gap-3">
+                    <label class="form-label" for="mant-strDescripcion">Observaciones <span class="mant-optional">Opcional</span></label>
+                    <span class="mant-character-counter" id="mantDescripcionCounter" aria-live="polite">0/500</span>
+                </div>
+                <textarea id="mant-strDescripcion" name="strDescripcion" class="form-control" rows="3" maxlength="500" placeholder="Describe brevemente el problema o motivo de ingreso..."></textarea>
             </div>
         </div>
     </section>
@@ -96,7 +107,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <span>¿El servicio ya concluyó? Activa el switch para registrar el reporte de taller de inmediato.</span>
+            <span><strong>¿El servicio ya concluyó?</strong><small>Activa esta opción para registrar también el reporte del taller.</small></span>
         </div>
         <label class="mant-toggle" for="switchServicioConcluido">
             <input type="checkbox" id="switchServicioConcluido" role="switch" aria-checked="false" />
@@ -108,11 +119,15 @@
     </div>
 
     <!-- ─── Tarjeta 2: Reporte de Taller (oculta hasta activar el switch) ─── -->
-    <section class="cavex-card form-section-card vehiculo-section-card mant-card" id="card2" style="display: none;">
-        <h3 class="form-section-title">
-            <span class="form-section-number">2</span>
-            Reporte de Taller
-        </h3>
+    <section class="cavex-card form-section-card vehiculo-section-card mant-card" id="card2" style="display: none;" aria-labelledby="tituloReporteTaller">
+        <div class="mant-section-heading">
+            <span class="mant-section-icon mant-section-icon--teal" aria-hidden="true"><i class="bi bi-receipt"></i></span>
+            <div>
+                <span class="mant-section-eyebrow">Cierre de servicio</span>
+                <h2 class="form-section-title" id="tituloReporteTaller">Reporte de taller</h2>
+                <p>Registra los costos, forma de pago y comprobante del servicio concluido.</p>
+            </div>
+        </div>
 
         <div class="row g-3">
             <!-- Costos financieros -->
@@ -177,24 +192,35 @@
 
     <!-- ─── Barra de acción ────────────────────────────────────────────────── -->
     <div class="form-action-bar vehiculo-action-bar">
-        <a class="btn btn-outline-cavex" asp-controller="Vehiculos" asp-action="Index">Cancelar / Volver</a>
-        <button type="submit" id="btnGuardarIngresoTaller" class="btn btn-cavex">
-            <span id="btnGuardarLabel">Guardar ingreso a taller</span>
-        </button>
+        <a class="btn btn-outline-cavex" asp-controller="Vehiculos" asp-action="Index"><i class="bi bi-arrow-left"></i> Volver</a>
+        <div class="mant-action-group">
+            <button type="button" id="btnLimpiarIngresoTaller" class="btn btn-outline-cavex"><i class="bi bi-eraser"></i> Limpiar</button>
+            <button type="submit" id="btnGuardarIngresoTaller" class="btn btn-cavex">
+                <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                <span id="btnGuardarLabel">Registrar mantenimiento</span>
+            </button>
+        </div>
     </div>
 </form>
 
 <!-- ─── Tabla de historial ─────────────────────────────────────────────────── -->
-<div class="cavex-card table-module vehiculo-module-table mt-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
-        <h3 class="form-section-title m-0">Historial de Ingresos a Taller</h3>
-        <div class="table-search-box position-relative" style="max-width: 260px;">
-            <input type="text" id="tableSearch" class="form-control form-control-sm" placeholder="Buscar en el historial..." />
+<section class="cavex-card table-module vehiculo-module-table mant-history-card mt-4" aria-labelledby="tituloHistorialMantenimiento">
+    <div class="mant-history-header">
+        <div>
+            <span class="mant-section-eyebrow">Seguimiento</span>
+            <h2 class="form-section-title m-0" id="tituloHistorialMantenimiento">Historial de mantenimientos</h2>
+            <p>Consulta los ingresos a taller y reportes finalizados.</p>
         </div>
+        <span class="mant-count-badge"><i class="bi bi-wrench-adjustable-circle"></i><strong id="countMantenimientoActivo">0</strong> en mantenimiento</span>
     </div>
 
-    <div class="table-filter-bar mb-3">
-        <div class="custom-tabs-container" id="statusTabs">
+    <div class="mant-history-toolbar">
+        <div class="table-search-box position-relative">
+            <label class="visually-hidden" for="tableSearch">Buscar en el historial</label>
+            <i class="bi bi-search mant-search-icon" aria-hidden="true"></i>
+            <input type="search" id="tableSearch" class="form-control" placeholder="Buscar vehículo, taller o responsable..." autocomplete="off" />
+        </div>
+        <div class="custom-tabs-container" id="statusTabs" aria-label="Filtrar historial por estado">
             <button type="button" class="tab-item active" data-status-filter="todos">
                 Todos <span class="tab-count count-all" id="countTodos">0</span>
             </button>
@@ -207,7 +233,7 @@
         </div>
     </div>
 
-    <div class="table-responsive">
+    <div class="table-responsive mant-table-scroll">
         <table class="table table-hover align-middle executive-table table-cavex-compact">
             <thead>
                 <tr>
@@ -215,8 +241,8 @@
                     <th>Taller</th>
                     <th>Tipo de Servicio</th>
                     <th>Encargado</th>
-                    <th>Fecha</th>
-                    <th>KM</th>
+                    <th>Fecha de ingreso</th>
+                    <th>Kilometraje</th>
                     <th>Total</th>
                     <th>Estado</th>
                     <th class="text-end" style="width:130px;">Acciones</th>
@@ -224,11 +250,12 @@
             </thead>
             <tbody id="ingresoTallerTableBody">
                 <tr>
-                    <td colspan="9" class="text-center text-muted py-4">Cargando registros...</td>
+                    <td colspan="9" class="mant-table-state"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Cargando registros...</td>
                 </tr>
             </tbody>
         </table>
     </div>
+</section>
 </div>
 
 @section Scripts {

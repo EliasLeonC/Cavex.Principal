@@ -17,7 +17,22 @@ namespace Cavex.Principal.ApiClients.EmpEmpleado
         [Get("/api/v1/EmpEmpleado/{id}")]
         Task<ResponseWrapper<EmpEmpleadoDto>> GetByIdAsync(int id, CancellationToken cancellationToken);
 
-        [Post("/api/v1/EmpEmpleado")]
+        /// <summary>
+        /// Solicita a la API el expediente PDF de un empleado como una respuesta HTTP sin
+        /// deserializar su contenido mediante el convertidor JSON de Refit.
+        /// </summary>
+        /// <param name="id">Identificador del empleado cuyo expediente debe generarse.</param>
+        /// <param name="cancellationToken">
+        /// Señal que cancela la petición cuando el navegador abandona la operación.
+        /// </param>
+        /// <returns>
+        /// Respuesta HTTP original; el servicio consumidor debe validar su estado, cabeceras,
+        /// contenido binario y liberar la respuesta después de leerla.
+        /// </returns>
+        [Get("/api/v1/EmpEmpleado/{id}/pdf")]
+        Task<HttpResponseMessage> GetPdfAsync(int id, CancellationToken cancellationToken);
+
+        [Post("/api/v1/EmpEmpleado/completo")]
         Task<ResponseWrapper<EmpEmpleadoDto>> CreateAsync([Body] RequestWrapper<EmpEmpleadoSaveDto> request, CancellationToken cancellationToken);
 
         [Put("/api/v1/EmpEmpleado/{id}")]

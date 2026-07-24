@@ -13,6 +13,7 @@ let _modoCompleto = false;   // true = switch ON (reporte de taller habilitado)
 let _listaHistorial = [];    // Datos completos de la tabla de historial
 let _filtroEstadoHistorial = 'todos'; // todos | incompletos | completos
 let _busquedaHistorial = ''; // Término de búsqueda en tabla
+let _isSubmitting = false;   // Evita envíos duplicados del formulario
 
 /* ─── Init ──────────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
@@ -23,6 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
     bindCostosChange();
     bindComprobanteUpload();
     bindFormSubmit();
+    bindFormValidation();
+    bindResetButton();
+    bindDescriptionCounter();
 
     setupStatusTabs('statusTabs', (filterValue) => {
         _filtroEstadoHistorial = filterValue;
@@ -45,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const kmInput = document.getElementById('mant-decKilometrajeActual');
     if (kmInput) {
         kmInput.addEventListener('input', () => {
-            kmInput.value = kmInput.value.replace(/[^0-9]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            formatKilometraje(kmInput);
         });
     }
 });
@@ -53,7 +57,91 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ─── Fecha por defecto = hoy ────────────────────────────────────────────── */
 function setFechaHoy() {
     const hoy = new Date().toISOString().split('T')[0];
-    document.getElementById('mant-dteFechaServicio').value = hoy;
+    const fechaInput = document.getElementById('mant-dteFechaServicio');
+    if (!fechaInput) return;
+    fechaInput.max = hoy;
+    fechaInput.value = hoy;
+}
+
+/* ─── Validación visual compatible con Bootstrap 5 ─────────────────────── */
+function bindFormValidation() {
+    const form = document.getElementById('formIngresoTaller');
+    if (!form) return;
+
+    form.querySelectorAll('input, select, textarea').forEach(field => {
+        if (field.type === 'file' || field.type === 'hidden' || field.type === 'checkbox') return;
+        ['input', 'change', 'blur'].forEach(eventName => {
+            field.addEventListener(eventName, () => validateField(field));
+        });
+    });
+}
+
+function validateField(field) {
+    if (!field || field.disabled) {
+        clearFieldValidation(field);
+        return true;
+    }
+
+    let valid = field.checkValidity();
+    if (field.id === 'mant-decKilometrajeActual') {
+        const value = getKilometrajeNumerico(field.value);
+        valid = Number.isFinite(value) && value >= 0 && field.value.trim() !== '';
+    }
+
+    field.classList.toggle('is-invalid', !valid);
+    field.classList.toggle('is-valid', valid && hasFieldValue(field));
+    field.setAttribute('aria-invalid', String(!valid));
+    return valid;
+}
+
+function hasFieldValue(field) {
+    return field.type === 'checkbox' ? field.checked : field.value.trim() !== '';
+}
+
+function clearFieldValidation(field) {
+    if (!field) return;
+    field.classList.remove('is-valid', 'is-invalid');
+    field.removeAttribute('aria-invalid');
+}
+
+function validateForm(form) {
+    let valid = true;
+    form.querySelectorAll('input, select, textarea').forEach(field => {
+        if (field.type === 'file' || field.type === 'hidden' || field.type === 'checkbox') return;
+        if (!validateField(field)) valid = false;
+    });
+    return valid && form.checkValidity();
+}
+
+function bindResetButton() {
+    document.getElementById('btnLimpiarIngresoTaller')?.addEventListener('click', resetForm);
+}
+
+function bindDescriptionCounter() {
+    const description = document.getElementById('mant-strDescripcion');
+    if (!description) return;
+    description.addEventListener('input', updateDescriptionCounter);
+    updateDescriptionCounter();
+}
+
+function updateDescriptionCounter() {
+    const description = document.getElementById('mant-strDescripcion');
+    const counter = document.getElementById('mantDescripcionCounter');
+    if (!description || !counter) return;
+    const max = Number(description.maxLength) || 500;
+    const length = description.value.length;
+    counter.textContent = `${length}/${max}`;
+    counter.classList.toggle('is-near-limit', length >= Math.floor(max * .9));
+}
+
+function formatKilometraje(input) {
+    const rawValue = input.value.replace(/[^0-9]/g, '');
+    input.value = rawValue ? Number(rawValue).toLocaleString('es-MX') : '';
+}
+
+function getKilometrajeNumerico(value) {
+    const normalized = String(value ?? '').replace(/,/g, '');
+    return normalized === '' ? NaN : Number(normalized);
 }
 
 /* ─── Switch toggle ─────────────────────────────────────────────────────── */
@@ -98,7 +186,7 @@ function toggleCard2(habilitar) {
         // Cambiamos el texto del switch a "NO"
         if (label) label.textContent = 'NO';
         // Restauramos el texto del botón principal
-        if (btnLabel) btnLabel.textContent = 'Guardar ingreso a taller';
+        if (btnLabel) btnLabel.textContent = 'Registrar mantenimiento';
         // Deshabilitamos los campos de la sección 2
         inputs2?.forEach(el => el.disabled = true);
         // Deshabilitamos la zona de carga de comprobante
@@ -226,6 +314,7 @@ function bindVinculacionVehiculoEmpleado() {
                     const kmVal = veh.decKilometrajeActual ?? veh.DecKilometrajeActual ?? 0;
                     // Escribimos el valor formateado con comas en el campo de texto
                     kmInput.value = Number(kmVal).toLocaleString('es-MX');
+                    validateField(kmInput);
                 }
 
                 // Buscamos si existe una asignación activa asociada al vehículo
@@ -380,8 +469,10 @@ function bindFormSubmit() {
         e.preventDefault();
         e.stopPropagation();
 
+        if (_isSubmitting) return;
+
         const form = e.target;
-        if (!form.checkValidity()) {
+        if (!validateForm(form)) {
             if (_modoCompleto) {
                 const fp = document.getElementById('mant-idVehFormaPago');
                 if (fp && !fp.value) { fp.classList.add('is-invalid'); return; }
@@ -397,8 +488,11 @@ function bindFormSubmit() {
 
 async function guardarIngresoTaller() {
     const btn = document.getElementById('btnGuardarIngresoTaller');
+    if (!btn || _isSubmitting) return;
+    _isSubmitting = true;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Guardando...</span>';
 
     try {
         const formData = new FormData();
@@ -444,9 +538,11 @@ async function guardarIngresoTaller() {
         console.error('SaveIngresoTaller error:', err);
         Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo contactar con el servidor. Intenta de nuevo.', confirmButtonColor: '#0d233a' });
     } finally {
+        _isSubmitting = false;
         btn.disabled = false;
-        const textoBtn = _modoCompleto ? 'Guardar reporte de taller' : 'Guardar ingreso a taller';
-        btn.innerHTML = `<span id="btnGuardarLabel">${textoBtn}</span>`;
+        btn.removeAttribute('aria-busy');
+        const textoBtn = _modoCompleto ? 'Guardar reporte de taller' : 'Registrar mantenimiento';
+        btn.innerHTML = `<i class="bi bi-check2-circle" aria-hidden="true"></i><span id="btnGuardarLabel">${textoBtn}</span>`;
     }
 }
 
@@ -455,6 +551,7 @@ function resetForm() {
     if (form) {
         form.reset();
         form.classList.remove('was-validated');
+        form.querySelectorAll('.is-valid, .is-invalid').forEach(clearFieldValidation);
     }
     // Reset switch
     const sw = document.getElementById('switchServicioConcluido');
@@ -470,12 +567,13 @@ function resetForm() {
     if (prompt) prompt.style.display = '';
     if (totalInput) totalInput.value = '0.00';
     setFechaHoy();
+    updateDescriptionCounter();
 }
 
 /* ─── Historial de ingresos a taller ───────────────────────────────────────── */
 async function cargarHistorial() {
     const tbody = document.getElementById('ingresoTallerTableBody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando...</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="mant-table-state"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Cargando registros...</td></tr>';
 
     try {
         const res  = await fetch('/IngresoTaller/GetIngresoTaller');
@@ -489,7 +587,7 @@ async function cargarHistorial() {
         renderTablaHistorial();
     } catch (err) {
         console.error("Error al cargar historial:", err);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-4">Error al cargar los registros.</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="mant-table-state text-danger"><div class="mant-empty-state"><i class="bi bi-exclamation-triangle"></i><strong>No fue posible cargar el historial</strong><span>Intenta nuevamente en unos momentos.</span></div></td></tr>';
     }
 }
 
@@ -510,9 +608,11 @@ function renderTablaHistorial() {
     const elTodos = document.getElementById('countTodos');
     const elIncompletos = document.getElementById('countIncompletos');
     const elCompletos = document.getElementById('countCompletos');
+    const elActivos = document.getElementById('countMantenimientoActivo');
     if (elTodos) elTodos.textContent = totalCount;
     if (elIncompletos) elIncompletos.textContent = incompletosCount;
     if (elCompletos) elCompletos.textContent = completosCount;
+    if (elActivos) elActivos.textContent = incompletosCount;
 
     // Filtrar lista
     let filtrados = _listaHistorial;
@@ -525,10 +625,10 @@ function renderTablaHistorial() {
 
     if (_busquedaHistorial) {
         filtrados = filtrados.filter(m => {
-            const strVeh = `${m.strMarca || ''} ${m.strModelo || ''}`.toLowerCase();
-            const strTaller = (m.strTaller || '').toLowerCase();
+            const strVeh = `${m.strVehDatosGenerales || ''} ${m.strMarca || ''} ${m.strModelo || ''} ${m.strPlaca || ''}`.toLowerCase();
+            const strTaller = (m.strVehCatTaller || m.strTaller || '').toLowerCase();
             const strTipo = (m.strTipoServicio || '').toLowerCase();
-            const strEnc = (m.strEncargado || '').toLowerCase();
+            const strEnc = (m.strEmpEmpleado || m.strEncargado || '').toLowerCase();
             return strVeh.includes(_busquedaHistorial) ||
                    strTaller.includes(_busquedaHistorial) ||
                    strTipo.includes(_busquedaHistorial) ||
@@ -537,7 +637,8 @@ function renderTablaHistorial() {
     }
 
     if (!filtrados.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Sin registros.</td></tr>';
+        const hasFilters = Boolean(_busquedaHistorial || _filtroEstadoHistorial !== 'todos');
+        tbody.innerHTML = `<tr><td colspan="9" class="mant-table-state"><div class="mant-empty-state"><i class="bi ${hasFilters ? 'bi-search' : 'bi-wrench-adjustable'}"></i><strong>${hasFilters ? 'Sin coincidencias' : 'Aún no hay mantenimientos registrados'}</strong><span>${hasFilters ? 'Prueba con otro término o filtro.' : 'Los ingresos registrados aparecerán en este historial.'}</span></div></td></tr>`;
         return;
     }
 
@@ -549,16 +650,19 @@ function renderTablaHistorial() {
             : '<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Ticket Incompleto</span>';
 
         const kmVal = Number(m.decKilometrajeActual ?? m.lngKilometrajeActual ?? 0);
-        const fechaVal = formatFecha(m.dteFechaServicio || m.dteFechaInicio);
+        const fechaVal = formatFechaHora(m.dteFechaServicio || m.dteFechaInicio);
+        const vehiculoTexto = m.strVehDatosGenerales || `${m.strMarca || ''} ${m.strModelo || ''}`.trim() || '—';
+        const tallerTexto = m.strVehCatTaller || m.strTaller || '—';
+        const encargadoTexto = m.strEmpEmpleado || m.strEncargado || '—';
 
         return `
         <tr>
             <td>
-                <div class="fw-bold">${escapeHtml(m.strMarca || '—')} ${escapeHtml(m.strModelo || '')}</div>
+                <div class="fw-bold">${escapeHtml(vehiculoTexto)}</div>
             </td>
-            <td>${escapeHtml(m.strTaller || '—')}</td>
+            <td>${escapeHtml(tallerTexto)}</td>
             <td>${escapeHtml(m.strTipoServicio || '—')}</td>
-            <td>${escapeHtml(m.strEncargado || '—')}</td>
+            <td>${escapeHtml(encargadoTexto)}</td>
             <td>${fechaVal}</td>
             <td>${kmVal > 0 ? kmVal.toLocaleString('es-MX') + ' km' : '—'}</td>
             <td><div class="fw-bold">$${Number(total || 0).toFixed(2)}</div></td>
@@ -639,6 +743,19 @@ function formatFecha(val) {
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function formatFechaHora(val) {
+    if (!val || val === '0001-01-01T00:00:00' || String(val).startsWith('0001-01-01')) return '—';
+    const date = new Date(val);
+    if (isNaN(date) || date.getFullYear() <= 1900) return '—';
+    const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0;
+    return date.toLocaleString('es-MX', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        ...(hasTime ? { hour: '2-digit', minute: '2-digit' } : {})
+    });
+}
+
 /**
  * Formatea en tiempo real un input de tipo moneda, permitiendo solo un punto decimal
  * e insertando comas para separar los miles mientras el usuario escribe.
@@ -660,7 +777,6 @@ function formatCurrencyInput(input) {
         input.value = integerPart;
     }
 }
-
 
 
 

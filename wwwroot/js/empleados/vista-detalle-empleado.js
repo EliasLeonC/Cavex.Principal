@@ -73,15 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = `/Empleado/Create?id=${emp.id}`;
             };
 
-            document.getElementById('btnPrint').onclick = () => {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Imprimir documento',
-                    text: 'La lógica de impresión será agregada próximamente.',
-                    confirmButtonColor: 'var(--teal-cavex)'
-                });
-            };
-
             // Fallback dinámico robusto para la foto del empleado
             const avatarContainer = document.getElementById('avatarContainer');
             const fileDocs = emp.empDocumentosLaborales;

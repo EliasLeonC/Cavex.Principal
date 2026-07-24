@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.IO;
 using System;
+using System.Net;
 
 namespace Cavex.Principal.Controllers
 {
@@ -151,6 +152,83 @@ namespace Cavex.Principal.Controllers
         {
             ViewBag.EmpleadoId = id;
             return View();
+        }
+
+        /// <summary>
+        /// Actúa como proxy de solo lectura entre la vista de detalle y el endpoint PDF de la API.
+        /// </summary>
+        /// <param name="id">Identificador real del empleado recibido desde la ruta de la vista.</param>
+        /// <param name="cancellationToken">
+        /// Señal que cancela la llamada a la API cuando el navegador cierra la pestaña.
+        /// </param>
+        /// <returns>
+        /// El PDF en disposición inline para abrirlo en el visor del navegador, o un mensaje de texto
+        /// seguro y amigable cuando el identificador, el empleado o la API no son válidos.
+        /// </returns>
+        [HttpGet]
+        public async Task<IActionResult> Imprimir(int id, CancellationToken cancellationToken)
+        {
+            // Validar antes de consumir la API evita trabajo innecesario y protege la acción si
+            // alguien construye manualmente una URL con un identificador no válido.
+            if (id <= 0)
+            {
+                return CrearRespuestaPdfError(
+                    HttpStatusCode.BadRequest,
+                    "El identificador del empleado debe ser mayor que cero.");
+            }
+
+            // El servicio reutiliza el cliente Refit configurado con ApiSettings:BaseUrl. El
+            // controlador no conoce ni expone la dirección física de la API.
+            var response = await _service.ObtenerPdfAsync(id, cancellationToken);
+            if (!response.Success || response.Data is null)
+            {
+                var message = response.StatusCode switch
+                {
+                    HttpStatusCode.BadRequest => "El identificador del empleado no es válido.",
+                    HttpStatusCode.NotFound => "No se encontró el empleado solicitado.",
+                    _ => "No fue posible generar el expediente PDF del empleado."
+                };
+
+                return CrearRespuestaPdfError(response.StatusCode, message);
+            }
+
+            // El nombre ya fue saneado por el servicio. Inline indica a Safari, Chrome y Edge que
+            // deben abrir el visor PDF en lugar de forzar inmediatamente una descarga.
+            var pdf = response.Data;
+            Response.Headers.ContentDisposition = $"inline; filename=\"{pdf.FileName}\"";
+
+            // El expediente contiene datos personales; impedir su almacenamiento en cachés
+            // compartidas reduce la exposición accidental después de cerrar la pestaña.
+            Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+            Response.Headers.Pragma = "no-cache";
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+
+            // File recibe los bytes en memoria y no escribe ningún archivo temporal o permanente.
+            return File(pdf.Content, pdf.ContentType);
+        }
+
+        /// <summary>
+        /// Construye una respuesta de texto segura para la pestaña nueva cuando no existe un PDF.
+        /// </summary>
+        /// <param name="statusCode">Código HTTP que describe el fallo funcional.</param>
+        /// <param name="message">Mensaje apto para mostrarse al usuario final.</param>
+        /// <returns>Contenido de texto plano sin detalles internos, rutas ni excepciones.</returns>
+        private static ContentResult CrearRespuestaPdfError(HttpStatusCode statusCode, string message)
+        {
+            // Un estado desconocido o no inicializado no debe convertirse en una respuesta HTTP
+            // inválida; en ese caso se utiliza 500 con el mismo mensaje seguro.
+            var numericStatusCode = (int)statusCode;
+            if (numericStatusCode is < 400 or > 599)
+            {
+                numericStatusCode = StatusCodes.Status500InternalServerError;
+            }
+
+            return new ContentResult
+            {
+                StatusCode = numericStatusCode,
+                ContentType = "text/plain; charset=utf-8",
+                Content = message
+            };
         }
 
         [HttpGet]

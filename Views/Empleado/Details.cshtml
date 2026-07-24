@@ -60,10 +60,18 @@
                 <img src="/svg/vista-empleados/edit.svg" alt="" />
                 Editar Empleado
             </button>
-            <button type="button" class="btn-print-details d-flex align-items-center gap-2" id="btnPrint">
+            <!-- Los Tag Helpers construyen la ruta MVC con el ID real sin exponer la BaseUrl de la API.
+                 target abre el visor PDF en otra pestaña y rel evita que esta controle la página original. -->
+            <a asp-controller="Empleado"
+               asp-action="Imprimir"
+               asp-route-id="@empleadoId"
+               target="_blank"
+               rel="noopener"
+               class="btn-print-details d-flex align-items-center gap-2 text-decoration-none"
+               id="btnPrint">
                 <img src="/svg/vista-empleados/print.svg" alt="" />
                 Imprimir
-            </button>
+            </a>
         </div>
     </div>
 
